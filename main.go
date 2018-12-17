@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image"
 	"log"
+	"mime/multipart"
 
 	pc "github.com/EdlinOrg/prominentcolor"
 	"github.com/labstack/echo"
@@ -53,35 +54,48 @@ func process(k int, arg int, img image.Image) (output []pc.ColorItem, err error)
 	return output, nil
 }
 
-func analyzeImage(c echo.Context) error {
-	file, err := c.FormFile("image")
+func analyzeImage(img image.Image) (Colors, error) {
+	str, err := process(3, pc.ArgumentAverageMean, img)
 	if err != nil {
-		return err
+		return Colors{}, err
 	}
 
-	f, err := file.Open()
+	result := NewColors(str)
+	return result, nil
+}
+
+func openImage(fileHeader *multipart.FileHeader) (image.Image, error) {
+	f, err := fileHeader.Open()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	img, _, err := image.Decode(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	str, err := process(3, pc.ArgumentAverageMean, img)
+	return img, nil
+}
+
+func analyzeImageRoute(c echo.Context) error {
+	fileHeader, err := c.FormFile("image")
 	if err != nil {
 		return err
 	}
 
-	result := NewColors(str)
+	img, err := openImage(fileHeader)
+
+	result, err := analyzeImage(img)
 
 	b, err := json.Marshal(&result)
 	if err != nil {
 		return err
 	}
 
-	return c.String(200, string(b))
+	c.String(200, string(b))
+
+	return nil
 }
 
 func main() {
@@ -89,6 +103,6 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	e.POST("/analyze", analyzeImage)
+	e.POST("/analyze", analyzeImageRoute)
 	e.Logger.Fatal(e.Start(":3000"))
 }
