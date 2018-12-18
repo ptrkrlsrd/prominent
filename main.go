@@ -12,6 +12,7 @@ import (
 	"github.com/labstack/echo/middleware"
 )
 
+// A Color is a struct containing a ColorItem and a Hex value
 type Color struct {
 	pc.ColorItem
 	Hex string
@@ -27,24 +28,24 @@ type Colors struct {
 	Dark   Color
 }
 
-func NewColors(color []pc.ColorItem) Colors {
+func NewColorsFromSlice(color []pc.ColorItem) (Colors, error) {
+	if len(color) != 3 {
+		return Colors{}, fmt.Errorf("")
+	}
+
 	result := Colors{
 		Light:  NewColor(color[2]),
 		Middle: NewColor(color[1]),
 		Dark:   NewColor(color[0]),
 	}
 
-	return result
+	return result, nil
 }
 
 func process(k int, arg int, img image.Image) (output []pc.ColorItem, err error) {
 	res, err := pc.KmeansWithAll(k, img, arg, uint(pc.DefaultSize), pc.GetDefaultMasks())
 	if err != nil {
 		log.Println(err)
-	}
-
-	if len(res) != 3 {
-		return nil, fmt.Errorf("")
 	}
 
 	for _, color := range res {
@@ -60,8 +61,7 @@ func analyzeImage(img image.Image) (Colors, error) {
 		return Colors{}, err
 	}
 
-	result := NewColors(str)
-	return result, nil
+	return NewColorsFromSlice(str)
 }
 
 func openImage(fileHeader *multipart.FileHeader) (image.Image, error) {
