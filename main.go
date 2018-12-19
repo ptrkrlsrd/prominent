@@ -28,15 +28,15 @@ type Colors struct {
 	Dark   Color
 }
 
-func NewColorsFromSlice(color []pc.ColorItem) (Colors, error) {
-	if len(color) != 3 {
-		return Colors{}, fmt.Errorf("")
+func NewColorsFromSlice(colorSlice []pc.ColorItem) (Colors, error) {
+	if len(colorSlice) != 3 {
+		return Colors{}, fmt.Errorf("colorSlice contains too few elements: %v", len(colorSlice))
 	}
 
 	result := Colors{
-		Light:  NewColor(color[2]),
-		Middle: NewColor(color[1]),
-		Dark:   NewColor(color[0]),
+		Light:  NewColor(colorSlice[2]),
+		Middle: NewColor(colorSlice[1]),
+		Dark:   NewColor(colorSlice[0]),
 	}
 
 	return result, nil
@@ -99,6 +99,7 @@ func analyzeImageRoute(c echo.Context) error {
 }
 
 func main() {
+	// TODO: Replace echo with fasthttp or net/http
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
