@@ -1,2 +1,2 @@
 # prominent
-## Go microservice for getting the 3 most prominent colors of an image
+## Microservice for getting the n most prominent colors of an image
