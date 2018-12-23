@@ -101,6 +101,7 @@ func analyzeImageRoute(c echo.Context) error {
 func main() {
 	// TODO: Replace echo with fasthttp or net/http
 	port := ":3000"
+	
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
