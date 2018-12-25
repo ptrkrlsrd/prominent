@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"image"
 	"log"
 	"mime/multipart"
+	"strconv"
 
 	pc "github.com/EdlinOrg/prominentcolor"
 	"github.com/labstack/echo"
@@ -22,26 +22,6 @@ func NewColor(color pc.ColorItem) Color {
 	return Color{Hex: "#" + color.AsString(), ColorItem: color}
 }
 
-type Colors struct {
-	Light  Color
-	Middle Color
-	Dark   Color
-}
-
-func NewColorsFromSlice(colorSlice []pc.ColorItem) (Colors, error) {
-	if len(colorSlice) != 3 {
-		return Colors{}, fmt.Errorf("colorSlice contains too few elements: %v", len(colorSlice))
-	}
-
-	result := Colors{
-		Light:  NewColor(colorSlice[2]),
-		Middle: NewColor(colorSlice[1]),
-		Dark:   NewColor(colorSlice[0]),
-	}
-
-	return result, nil
-}
-
 func process(k int, arg int, img image.Image) (output []pc.ColorItem, err error) {
 	res, err := pc.KmeansWithAll(k, img, arg, uint(pc.DefaultSize), pc.GetDefaultMasks())
 	if err != nil {
@@ -55,13 +35,18 @@ func process(k int, arg int, img image.Image) (output []pc.ColorItem, err error)
 	return output, nil
 }
 
-func analyzeImage(img image.Image) (Colors, error) {
-	str, err := process(3, pc.ArgumentAverageMean, img)
+func analyzeImage(img image.Image, n int) ([]Color, error) {
+	colorItems, err := process(n, pc.ArgumentAverageMean, img)
 	if err != nil {
-		return Colors{}, err
+		return nil, err
 	}
 
-	return NewColorsFromSlice(str)
+	var colors []Color
+	for _, v := range colorItems {
+		colors = append(colors, NewColor(v))
+	}
+
+	return colors, nil
 }
 
 func openImage(fileHeader *multipart.FileHeader) (image.Image, error) {
@@ -86,7 +71,29 @@ func analyzeImageRoute(c echo.Context) error {
 
 	img, err := openImage(fileHeader)
 
-	result, err := analyzeImage(img)
+	result, err := analyzeImage(img, 3)
+
+	b, err := json.Marshal(&result)
+	if err != nil {
+		return err
+	}
+
+	c.String(200, string(b))
+
+	return nil
+}
+
+func analyzeNColorsImageRoute(c echo.Context) error {
+	fileHeader, err := c.FormFile("image")
+	n := c.Param("n")
+	i, err := strconv.Atoi(n)
+	if err != nil {
+		return err
+	}
+
+	img, err := openImage(fileHeader)
+
+	result, err := analyzeImage(img, i)
 
 	b, err := json.Marshal(&result)
 	if err != nil {
@@ -101,11 +108,12 @@ func analyzeImageRoute(c echo.Context) error {
 func main() {
 	// TODO: Replace echo with fasthttp or net/http
 	port := ":3000"
-	
+
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	e.POST("/analyze", analyzeImageRoute)
+	e.POST("/analyze/:n", analyzeNColorsImageRoute)
 	e.Logger.Fatal(e.Start(port))
 }
